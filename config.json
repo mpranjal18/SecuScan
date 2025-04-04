@@ -1,0 +1,23 @@
+{
+    "email": {
+        "imap_server": "imap.gmail.com",
+        "email": "mpranjal0718@gmail.com",
+        "password": "tscy hyzd cddl xivx",
+        "allowed_senders": [
+            "mpranjal0718@gmail.com",
+            "anjalilodhi134@gmail.com",
+            "cheruvuanushka123@gmail.com",
+            "somarajupallinihal@gmail.com"
+            "nandanitripathi1406@gmail.com"
+        ]
+    },
+    "monitoring": {
+        "check_interval": 300,
+        "allowed_domains": [
+            "localhost",
+            "127.0.0.1"
+        ],
+        "scan_timeout": 3600,
+        "max_concurrent_scans": 3
+    }
+} 

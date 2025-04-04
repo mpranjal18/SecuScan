@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Products - Secure Puma Store</title>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
+</head>
+<body>
+    <h1>Products</h1>
+    
+    <form action="/products" method="get">
+        <input type="text" name="search" placeholder="Search products...">
+        <button type="submit">Search</button>
+    </form>
+
+    <div class="products">
+        {% for product in products %}
+        <div class="product">
+            <h2>{{ product['name'] }}</h2>
+            <p>{{ product['description'] }}</p>
+            <p>Price: ${{ product['price'] }}</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <h2>Add New Product</h2>
+    <form action="/add_product" method="post">
+        <input type="text" name="name" placeholder="Product Name" maxlength="100" required>
+        <input type="text" name="description" placeholder="Description" maxlength="500">
+        <input type="number" name="price" placeholder="Price" step="0.01" min="0" required>
+        <button type="submit">Add Product</button>
+    </form>
+
+    <p><a href="/">Back to Home</a></p>
+
+    <h2>Subscribe to Newsletter</h2>
+    <form action="/subscribe" method="post">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <input type="email" name="email" placeholder="Enter your email" maxlength="254" required>
+        <button type="submit">Subscribe</button>
+    </form>
+
+    <script nonce="{{ csp_nonce() }}">
+        // Safe recursive function with depth limit
+        function safeRecursiveFunction(n, maxDepth = 1000) {
+            if (n === 0 || maxDepth === 0) return;
+            return safeRecursiveFunction(n - 1, maxDepth - 1);
+        }
+
+        // Safe input processing without eval
+        function processUserInput(input) {
+            // Use safer alternatives like parseInt for numbers
+            return Number.isFinite(parseFloat(input)) ? parseFloat(input) : null;
+        }
+    </script>
+</body>
+</html> 

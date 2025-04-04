@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Secure Puma Store</title>
+</head>
+<body>
+    <h1>Welcome to Secure Puma Store</h1>
+    
+    <nav>
+        <ul>
+            <li><a href="/products">View Products</a></li>
+            <li><a href="/products?search=">Search Products</a></li>
+            <li><a href="/export?format=csv">Export Products (CSV)</a></li>
+            <li><a href="/export?format=json">Export Products (JSON)</a></li>
+        </ul>
+    </nav>
+
+    <form action="/products" method="get">
+        <input type="text" name="search" placeholder="Search products...">
+        <button type="submit">Search</button>
+    </form>
+
+    <form action="/subscribe" method="post">
+        <input type="email" name="email" placeholder="Subscribe to newsletter" maxlength="254" required>
+        <button type="submit">Subscribe</button>
+    </form>
+</body>
+</html> 

@@ -1,0 +1,2 @@
+2025-03-10 21:28:37,804 - SecurityScanner - INFO - Starting security scan of http://localhost:5000 in passive mode
+2025-03-10 21:28:39,847 - SecurityScanner - INFO - Scan completed successfully

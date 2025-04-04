@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecuScan - Web Security Scanner</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="welcome-card">
+            <h1>SecuScan</h1>
+            <p class="subtitle">Web Application Security Scanner</p>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🔍</div>
+                    <p>Vulnerability Detection</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <p>Fast Scanning</p>
+                </div>
+            </div>
+
+            <button id="startScanBtn" class="start-scan-btn">Start Scan</button>
+        </div>
+
+        <div id="scanForm" class="scan-form hidden">
+            <h2>Security Scan</h2>
+            <form onsubmit="startScan(event)">
+                <div class="form-group">
+                    <label for="url">Target URL:</label>
+                    <input type="url" id="url" name="url" required 
+                           placeholder="Enter the URL to scan (e.g., http://example.com)"
+                           pattern="https?://.+"
+                           title="Please enter a valid URL starting with http:// or https://">
+                </div>
+                <div class="form-group">
+                    <label for="mode">Scan Mode:</label>
+                    <select id="mode" name="mode">
+                        <option value="passive">Passive</option>
+                        <option value="active">Active</option>
+                    </select>
+                </div>
+                <div class="button-group">
+                    <button type="button" class="back-btn" onclick="document.querySelector('.welcome-card').classList.remove('hidden'); document.getElementById('scanForm').classList.add('hidden')">Back</button>
+                    <button type="submit" class="start-scan-btn">Start Scan</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+        <div id="loadingSpinner" class="spinner hidden"></div>
+
+        <div id="resultsSection">
+            <div id="results"></div>
+            
+            <div class="charts">
+                <div class="chart">
+                    <h3>Distribution of Vulnerabilities</h3>
+                    <img id="pieChart" alt="Vulnerability Distribution">
+                </div>
+                <div class="chart">
+                    <h3>Vulnerability Count by Risk Level</h3>
+                    <img id="barChart" alt="Vulnerability Count">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html> 

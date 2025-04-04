@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Products - Vulnerable Puma Store</title>
+</head>
+<body>
+    <h1>Products</h1>
+    
+    <!-- Search Form - Vulnerable to SQL Injection -->
+    <form action="/products" method="get">
+        <input type="text" name="search" placeholder="Search products...">
+        <button type="submit">Search</button>
+    </form>
+
+    <!-- Products List -->
+    <div class="products">
+        {% for product in products %}
+        <div class="product">
+            <h2>{{ product['name'] }}</h2>
+            <p>{{ product['description'] }}</p>
+            <p>Price: ${{ product['price'] }}</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Add Product Form - Vulnerable to SQL Injection -->
+    <h2>Add New Product</h2>
+    <form action="/add_product" method="post">
+        <input type="text" name="name" placeholder="Product Name" required>
+        <input type="text" name="description" placeholder="Description" required>
+        <input type="number" name="price" placeholder="Price" step="0.01" required>
+        <button type="submit">Add Product</button>
+    </form>
+
+    <!-- Export Form - Vulnerable to Command Injection -->
+    <h2>Export Products</h2>
+    <form action="/export" method="get">
+        <input type="text" name="format" placeholder="Export format (e.g., csv)" required>
+        <button type="submit">Export</button>
+    </form>
+
+    <!-- Subscribe Form - Vulnerable to Buffer Overflow -->
+    <h2>Subscribe to Newsletter</h2>
+    <form action="/subscribe" method="post">
+        <input type="email" name="email" placeholder="Enter your email">
+        <button type="submit">Subscribe</button>
+    </form>
+
+    <p><a href="/">Back to Home</a></p>
+
+    <!-- Vulnerable JavaScript -->
+    <script>
+        // Vulnerable to stack overflow
+        function recursiveFunction(n) {
+            if (n === 0) return;
+            recursiveFunction(n - 1);
+        }
+
+        // Vulnerable eval usage
+        function processUserInput(input) {
+            return eval(input);
+        }
+
+        // Vulnerable to SQL injection
+        function searchProducts(query) {
+            fetch('/products?search=' + query)
+                .then(response => response.json())
+                .then(data => console.log(data));
+        }
+    </script>
+</body>
+</html> 

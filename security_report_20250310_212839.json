@@ -1,0 +1,39 @@
+{
+  "scan_date": "2025-03-10T21:28:39.846604",
+  "vulnerabilities": [
+    {
+      "name": "Potential Buffer Overflow Vulnerability",
+      "description": "Input field without length restriction detected",
+      "risk_level": "medium",
+      "evidence": "Input field name has no maxlength attribute",
+      "fix_recommendation": "Add maxlength attribute to limit input size"
+    },
+    {
+      "name": "Potential Buffer Overflow Vulnerability",
+      "description": "Input field without length restriction detected",
+      "risk_level": "medium",
+      "evidence": "Input field description has no maxlength attribute",
+      "fix_recommendation": "Add maxlength attribute to limit input size"
+    },
+    {
+      "name": "Potential Buffer Overflow Vulnerability",
+      "description": "Input field without length restriction detected",
+      "risk_level": "medium",
+      "evidence": "Input field price has no maxlength attribute",
+      "fix_recommendation": "Add maxlength attribute to limit input size"
+    },
+    {
+      "name": "Potential SQL Injection Vulnerability",
+      "description": "SQL query pattern detected in response",
+      "risk_level": "high",
+      "evidence": "Found SQL pattern: DROP.*TABLE",
+      "fix_recommendation": "Use parameterized queries and input validation"
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "high": 1,
+    "medium": 3,
+    "low": 0
+  }
+}

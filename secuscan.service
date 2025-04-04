@@ -1,0 +1,13 @@
+[Unit]
+Description=SecuScan Automation Services
+After=network.target
+
+[Service]
+User=your-username
+WorkingDirectory=/path/to/your/project
+ExecStart=/usr/bin/python /path/to/your/project/scanner/automation/start_services.py
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target 

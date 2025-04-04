@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vulnerable Puma Store</title>
+</head>
+<body>
+    <h1>Welcome to Vulnerable Puma Store</h1>
+    
+    <nav>
+        <ul>
+            <li><a href="/products">View Products</a></li>
+            <li><a href="/products?search=">Search Products</a></li>
+            <li><a href="/export?format=csv">Export Products</a></li>
+        </ul>
+    </nav>
+
+    <!-- Vulnerable JavaScript -->
+    <script>
+        function processUserInput(input) {
+            eval(input); // Intentionally vulnerable
+        }
+
+        function recursiveFunction(n) {
+            return recursiveFunction(n); // Intentionally vulnerable to stack overflow
+        }
+    </script>
+
+    <!-- Vulnerable form -->
+    <form action="/products" method="get">
+        <input type="text" name="search" placeholder="Search products...">
+        <button type="submit">Search</button>
+    </form>
+
+    <!-- Vulnerable to buffer overflow -->
+    <form action="/subscribe" method="post">
+        <input type="text" name="email" placeholder="Subscribe to newsletter">
+        <button type="submit">Subscribe</button>
+    </form>
+</body>
+</html> 

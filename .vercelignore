@@ -14,11 +14,17 @@ build/
 *.sqlite
 *.sqlite3
 .env
+.venv
 .venv/
+venv
 venv/
+ENV
 ENV/
+env
 env/
+**/.venv
 **/.venv/
+**/venv
 **/venv/
 .vscode/
 .idea/

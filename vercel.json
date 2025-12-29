@@ -4,11 +4,11 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "app.py"
+      "dest": "api/index.py"
     }
   ],
   "functions": {
-    "app.py": {
+    "api/index.py": {
       "runtime": "@vercel/python@1.0.0",
       "includeFiles": "scanner/**"
     }

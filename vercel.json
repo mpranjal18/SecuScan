@@ -9,7 +9,7 @@
   ],
   "functions": {
     "app.py": {
-      "runtime": "@vercel/python",
+      "runtime": "@vercel/python@1.0.0",
       "includeFiles": "scanner/**"
     }
   },

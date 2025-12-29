@@ -1,4 +1,5 @@
 from flask import Flask, request, render_template, jsonify, send_file
+from flask_cors import CORS
 import os
 import sys
 from datetime import datetime
@@ -7,6 +8,9 @@ import io
 import base64
 import urllib3
 import logging
+import ssl
+import socket
+import time
 
 # Add project root to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -16,12 +20,110 @@ if project_root not in sys.path:
 from scanner.core.scanner import SecurityScanner
 from scanner.report.generator import ReportGenerator
 
-# Disable SSL warnings
+# Disable SSL warnings for outgoing requests (not for our server)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-app = Flask(__name__)
-logging.basicConfig(level=logging.INFO)
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
+
+app = Flask(__name__)
+# Enable CORS for all routes with more permissive settings for local network
+CORS(app, resources={
+    r"/*": {
+        "origins": ["*"],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True,
+        "expose_headers": ["Content-Disposition"]
+    }
+})
+
+def get_local_ip():
+    """Get the local IP address of the machine"""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        return local_ip
+    except Exception as e:
+        logger.error(f"Error getting local IP: {str(e)}")
+        return "0.0.0.0"
+
+def check_network_connectivity():
+    """Check if the server is accessible from the network"""
+    try:
+        # Try to create a test socket
+        test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        test_socket.settimeout(5)  # 5 second timeout
+        test_socket.bind(('0.0.0.0', 8080))
+        test_socket.close()
+        return True
+    except Exception as e:
+        logger.error(f"Network connectivity check failed: {str(e)}")
+        return False
+
+def create_ssl_context():
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    cert_path = os.path.join(os.path.dirname(__file__), 'cert.pem')
+    key_path = os.path.join(os.path.dirname(__file__), 'key.pem')
+    
+    if not (os.path.exists(cert_path) and os.path.exists(key_path)):
+        # Generate self-signed certificate if not exists
+        from cryptography import x509
+        from cryptography.x509.oid import NameOID
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        from cryptography.hazmat.primitives import serialization
+        import datetime
+
+        # Generate key
+        private_key = rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=2048,
+        )
+
+        # Generate certificate
+        subject = issuer = x509.Name([
+            x509.NameAttribute(NameOID.COMMON_NAME, u"localhost"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"SecuScan Development"),
+            x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
+        ])
+
+        cert = x509.CertificateBuilder().subject_name(
+            subject
+        ).issuer_name(
+            issuer
+        ).public_key(
+            private_key.public_key()
+        ).serial_number(
+            x509.random_serial_number()
+        ).not_valid_before(
+            datetime.datetime.utcnow()
+        ).not_valid_after(
+            datetime.datetime.utcnow() + datetime.timedelta(days=365)
+        ).add_extension(
+            x509.SubjectAlternativeName([x509.DNSName(u"localhost")]),
+            critical=False,
+        ).sign(private_key, hashes.SHA256())
+
+        # Write certificate and private key to files
+        with open(cert_path, "wb") as f:
+            f.write(cert.public_bytes(serialization.Encoding.PEM))
+
+        with open(key_path, "wb") as f:
+            f.write(private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption()
+            ))
+
+    context.load_cert_chain(cert_path, key_path)
+    return context
 
 def generate_risk_charts(vulnerabilities):
     # Count vulnerabilities by risk level
@@ -111,13 +213,24 @@ def scan():
 
         for vuln in results.get("vulnerabilities", []):
             risk_level = vuln.get("risk_level", "").lower()
+            # Use ML-adjusted risk if available
+            if "ml_adjusted_risk" in vuln:
+                risk_level = vuln.get("ml_adjusted_risk", risk_level).lower()
+            
             if risk_level in vulnerabilities_by_risk:
-                vulnerabilities_by_risk[risk_level].append({
+                vuln_data = {
                     "name": vuln.get("name", "Unknown"),
                     "description": vuln.get("description", "No description"),
                     "evidence": vuln.get("evidence", "No evidence"),
                     "fix_recommendation": vuln.get("fix_recommendation", "No recommendation")
-                })
+                }
+                # Add ML insights if available
+                if "ml_insights" in vuln:
+                    vuln_data["ml_insights"] = vuln.get("ml_insights")
+                if "ml_anomaly_detected" in vuln:
+                    vuln_data["ml_anomaly_detected"] = vuln.get("ml_anomaly_detected")
+                    vuln_data["ml_anomaly_score"] = vuln.get("ml_anomaly_score")
+                vulnerabilities_by_risk[risk_level].append(vuln_data)
 
         response = {
             "success": True,
@@ -130,6 +243,10 @@ def scan():
             "vulnerabilities": vulnerabilities_by_risk,
             "message": f"Scan completed. Found {total} vulnerabilities ({high_risk} high, {medium_risk} medium, {low_risk} low risk)"
         }
+        
+        # Add ML insights if available
+        if "ml_insights" in results:
+            response["ml_insights"] = results["ml_insights"]
 
         logger.info(f"Scan completed successfully: {response['message']}")
         return jsonify(response)
@@ -173,5 +290,58 @@ def download_report():
             'error': str(e)
         }), 500
 
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint"""
+    return jsonify({
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "server_ip": get_local_ip()
+    })
+
+def check_port_availability(port):
+    """Check if the port is available"""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(('0.0.0.0', port))
+            return True
+    except socket.error:
+        return False
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5500, debug=True) 
+    # Check if port is available
+    if not check_port_availability(8080):
+        logger.error("Port 8080 is already in use!")
+        logger.info("Please try these steps:")
+        logger.info("1. Close any other instances of the server")
+        logger.info("2. Wait a few seconds and try again")
+        logger.info("3. If the problem persists, restart your computer")
+        sys.exit(1)
+
+    # Check network connectivity before starting
+    if not check_network_connectivity():
+        logger.error("Network connectivity check failed. Please check your firewall settings.")
+        sys.exit(1)
+
+    ssl_context = create_ssl_context()
+    local_ip = get_local_ip()
+    
+    # Log detailed network information
+    logger.info("=" * 50)
+    logger.info("Starting SecuScan Server")
+    logger.info("=" * 50)
+    logger.info(f"Server IP: {local_ip}")
+    logger.info("Port: 8080")
+    logger.info("Protocol: HTTPS")
+    logger.info("=" * 50)
+    logger.info("Make sure your firewall allows incoming connections on port 8080")
+    logger.info("=" * 50)
+    
+    # Start the server with increased timeout
+    app.run(
+        host='0.0.0.0',
+        port=8080,
+        ssl_context=ssl_context,
+        debug=False,
+        threaded=True
+    ) 

@@ -9,17 +9,30 @@ from scanner.analyzers.buffer_overflow import BufferOverflowAnalyzer
 from scanner.analyzers.stack_overflow import StackOverflowAnalyzer
 from scanner.analyzers.sql_injection import SQLInjectionAnalyzer
 from scanner.analyzers.xss import XSSAnalyzer
+from scanner.ml.risk_predictor import RiskPredictor
 import time
 
 class SecurityScanner:
-    def __init__(self, mode='passive'):
+    def __init__(self, mode='passive', use_ml=True):
         self.mode = mode
+        self.use_ml = use_ml
         self.analyzers = [
             SQLInjectionAnalyzer(),
             XSSAnalyzer(),
             RCEAnalyzer(),
             BufferOverflowAnalyzer()
         ]
+        # Initialize ML risk predictor
+        if self.use_ml:
+            try:
+                self.ml_predictor = RiskPredictor()
+                print("ML-based risk assessment enabled")
+            except Exception as e:
+                print(f"Warning: Could not initialize ML predictor: {e}")
+                self.use_ml = False
+                self.ml_predictor = None
+        else:
+            self.ml_predictor = None
     
     def validate_url(self, url: str) -> str:
         """Validate and format the URL properly"""
@@ -40,16 +53,32 @@ class SecurityScanner:
             raise ValueError(f"Invalid URL: {str(e)}")
     
     def scan(self, url: str) -> Dict:
-        """Main scanning function"""
+        """Main scanning function with ML enhancement"""
         try:
             # Validate and normalize URL
             url = self.validate_url(url)
             print(f"\nStarting security scan of {url}")
             print("=" * 50)
             
-            # Check if URL is accessible
-            if not self._check_url_accessible(url):
+            # Check if URL is accessible and get response
+            response = self._get_url_response(url)
+            if not response:
                 return {"error": "URL is not accessible"}
+            
+            response_text = response.text
+            
+            # Get ML-based overall risk assessment
+            ml_insights = None
+            if self.use_ml and self.ml_predictor:
+                try:
+                    print("\nRunning ML-based risk assessment...")
+                    ml_insights = self.ml_predictor.predict_risk_level(url, response_text, response)
+                    print(f"ML Predicted Risk: {ml_insights['predicted_risk'].upper()} "
+                          f"(Confidence: {ml_insights['confidence']:.2%})")
+                    if ml_insights['is_anomaly']:
+                        print(f"⚠️  Anomaly detected (score: {ml_insights['anomaly_score']:.2f})")
+                except Exception as e:
+                    print(f"ML assessment error: {str(e)}")
             
             all_vulnerabilities = []
             
@@ -59,7 +88,21 @@ class SecurityScanner:
                     print(f"\nRunning {analyzer.name}...")
                     vulnerabilities = analyzer.analyze(url, self.mode)
                     if vulnerabilities:
-                        all_vulnerabilities.extend(vulnerabilities)
+                        # Enhance vulnerabilities with ML insights
+                        if self.use_ml and self.ml_predictor:
+                            enhanced_vulns = []
+                            for vuln in vulnerabilities:
+                                try:
+                                    enhanced = self.ml_predictor.enhance_vulnerability_risk(
+                                        vuln, url, response_text
+                                    )
+                                    enhanced_vulns.append(enhanced)
+                                except Exception as e:
+                                    # If ML enhancement fails, use original
+                                    enhanced_vulns.append(vuln)
+                            all_vulnerabilities.extend(enhanced_vulns)
+                        else:
+                            all_vulnerabilities.extend(vulnerabilities)
                         self._print_analyzer_results(analyzer.name, vulnerabilities)
                 except Exception as e:
                     print(f"Error running {analyzer.name}: {str(e)}")
@@ -70,10 +113,17 @@ class SecurityScanner:
             summary = self._get_summary_counts(all_vulnerabilities)
             self._print_summary(all_vulnerabilities)
             
-            return {
+            # Prepare response
+            result = {
                 "vulnerabilities": all_vulnerabilities,
                 "summary": summary
             }
+            
+            # Add ML insights to result
+            if ml_insights:
+                result["ml_insights"] = ml_insights
+            
+            return result
             
         except Exception as e:
             print(f"Scan error: {str(e)}")
@@ -86,6 +136,14 @@ class SecurityScanner:
             return response.status_code == 200
         except:
             return False
+    
+    def _get_url_response(self, url: str):
+        """Get HTTP response for URL"""
+        try:
+            response = requests.get(url, timeout=10, verify=False)
+            return response if response.status_code == 200 else None
+        except:
+            return None
             
     def _print_analyzer_results(self, analyzer_name: str, vulnerabilities: List[Dict]) -> None:
         """Print results from an individual analyzer"""

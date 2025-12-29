@@ -3,8 +3,10 @@ import sys
 import subprocess
 import logging
 from pathlib import Path
+import requests
+import argparse
 
-def install_service():
+def install_service(server_ip):
     """Install SecuScan as a Windows service"""
     try:
         # Create necessary directories
@@ -25,6 +27,20 @@ def install_service():
         ])
         
         print("✅ Packages installed successfully")
+        
+        # Test connection to the specified server
+        print(f"\nTesting connection to server {server_ip}...")
+        try:
+            response = requests.get(f'https://{server_ip}:5500/health', verify=False)
+            print(f"✅ Connection successful: {response.text}")
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Connection failed: {str(e)}")
+            print("Please check if:")
+            print("1. The server is running")
+            print("2. The IP address is correct")
+            print("3. The firewall allows connections on port 5500")
+            return False
+            
         return True
         
     except Exception as e:
@@ -32,6 +48,11 @@ def install_service():
         return False
 
 if __name__ == "__main__":
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Install SecuScan service')
+    parser.add_argument('172.25.2.105', required=True, help='IP address of the SecuScan server')
+    args = parser.parse_args()
+    
     # Run as administrator check
     try:
         is_admin = os.getuid() == 0
@@ -44,7 +65,7 @@ if __name__ == "__main__":
         print("Please right-click and select 'Run as administrator'")
         sys.exit(1)
         
-    # Install service
-    success = install_service()
+    # Install service with the specified server IP
+    success = install_service(args.server_ip)
     if not success:
         sys.exit(1) 

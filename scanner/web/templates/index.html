@@ -6,6 +6,7 @@
     <title>SecuScan - Web Security Scanner</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -54,17 +55,36 @@
         <div id="errorMessage" class="error-message" style="display: none;"></div>
         <div id="loadingSpinner" class="spinner hidden"></div>
 
-        <div id="resultsSection">
+        <div id="resultsSection" class="hidden">
             <div id="results"></div>
             
-            <div class="charts">
-                <div class="chart">
-                    <h3>Distribution of Vulnerabilities</h3>
-                    <img id="pieChart" alt="Vulnerability Distribution">
-                </div>
-                <div class="chart">
-                    <h3>Vulnerability Count by Risk Level</h3>
-                    <img id="barChart" alt="Vulnerability Count">
+            <div class="charts-container">
+                <h2 style="text-align: center; margin: 30px 0 20px 0; color: #333;">📊 Visual Analytics</h2>
+                
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>🔴 Vulnerability Distribution</h3>
+                        <p class="chart-description">Shows the proportion of vulnerabilities by risk level</p>
+                        <canvas id="pieChart"></canvas>
+                    </div>
+                    
+                    <div class="chart-card">
+                        <h3>📊 Risk Level Count</h3>
+                        <p class="chart-description">Number of vulnerabilities in each risk category</p>
+                        <canvas id="barChart"></canvas>
+                    </div>
+                    
+                    <div class="chart-card" id="mlRiskChartCard" style="display: none;">
+                        <h3>🤖 ML Risk Prediction</h3>
+                        <p class="chart-description">Machine Learning predicted risk probabilities</p>
+                        <canvas id="mlRiskChart"></canvas>
+                    </div>
+                    
+                    <div class="chart-card" id="mlConfidenceChartCard" style="display: none;">
+                        <h3>📈 ML Confidence Score</h3>
+                        <p class="chart-description">How confident the ML model is in its predictions</p>
+                        <canvas id="mlConfidenceChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>

@@ -156,8 +156,48 @@ function displayResults(data) {
         ...data.summary
     };
 
+    // Build ML insights HTML if available
+    let mlInsightsHTML = '';
+    if (data.ml_insights) {
+        const ml = data.ml_insights;
+        const riskColor = ml.predicted_risk === 'high' ? '#dc3545' : 
+                         ml.predicted_risk === 'medium' ? '#ffc107' : '#28a745';
+        mlInsightsHTML = `
+            <div class="ml-insights" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid ${riskColor};">
+                <h3 style="margin-top: 0; color: #333;">🤖 ML-Based Risk Assessment</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                    <div>
+                        <strong>Predicted Risk:</strong> 
+                        <span style="color: ${riskColor}; font-weight: bold; text-transform: uppercase;">
+                            ${ml.predicted_risk}
+                        </span>
+                    </div>
+                    <div>
+                        <strong>Confidence:</strong> 
+                        <span style="font-weight: bold;">${(ml.confidence * 100).toFixed(1)}%</span>
+                    </div>
+                    ${ml.is_anomaly ? `
+                        <div style="color: #dc3545;">
+                            <strong>⚠️ Anomaly Detected:</strong> Yes
+                            <br><small>Score: ${ml.anomaly_score.toFixed(2)}</small>
+                        </div>
+                    ` : ''}
+                </div>
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #dee2e6;">
+                    <strong>Risk Probabilities:</strong>
+                    <div style="display: flex; gap: 15px; margin-top: 5px;">
+                        <span>Low: <strong>${(ml.risk_probabilities.low * 100).toFixed(1)}%</strong></span>
+                        <span>Medium: <strong>${(ml.risk_probabilities.medium * 100).toFixed(1)}%</strong></span>
+                        <span>High: <strong>${(ml.risk_probabilities.high * 100).toFixed(1)}%</strong></span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     summaryDiv.innerHTML = `
         <h2>Scan Summary</h2>
+        ${mlInsightsHTML}
         <div class="risk-counts">
             <div class="risk-count high">
                 <span class="count">${summary.high_risk || 0}</span>
@@ -199,14 +239,25 @@ function displayResults(data) {
             sectionDiv.innerHTML = `
                 <h3>${level.charAt(0).toUpperCase() + level.slice(1)} Risk Vulnerabilities</h3>
                 <div class="vulnerabilities">
-                    ${vulns.map(vuln => `
+                    ${vulns.map(vuln => {
+                        let mlBadge = '';
+                        if (vuln.ml_anomaly_detected) {
+                            mlBadge = `<span style="background: #dc3545; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; margin-left: 10px;">🤖 ML: Anomaly Detected</span>`;
+                        }
+                        if (vuln.ml_insights) {
+                            const mlRisk = vuln.ml_insights.predicted_risk;
+                            mlBadge = `<span style="background: ${mlRisk === 'high' ? '#dc3545' : mlRisk === 'medium' ? '#ffc107' : '#28a745'}; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.8em; margin-left: 10px;">🤖 ML Risk: ${mlRisk.toUpperCase()} (${(vuln.ml_insights.confidence * 100).toFixed(0)}%)</span>`;
+                        }
+                        return `
                         <div class="vulnerability-card">
-                            <h4>${vuln.name || 'Unnamed Vulnerability'}</h4>
+                            <h4>${vuln.name || 'Unnamed Vulnerability'}${mlBadge}</h4>
                             <p><strong>Description:</strong> ${vuln.description || 'No description available'}</p>
                             <p><strong>Evidence:</strong> ${vuln.evidence || 'No evidence available'}</p>
                             <p><strong>Fix:</strong> ${vuln.fix_recommendation || 'No fix recommendation available'}</p>
+                            ${vuln.ml_anomaly_detected ? `<p style="color: #dc3545; font-weight: bold;">⚠️ ML Anomaly Score: ${vuln.ml_anomaly_score ? vuln.ml_anomaly_score.toFixed(2) : 'N/A'}</p>` : ''}
                         </div>
-                    `).join('')}
+                    `;
+                    }).join('')}
                 </div>
             `;
             
@@ -217,16 +268,267 @@ function displayResults(data) {
     // Show the results section
     const resultsSection = document.getElementById('resultsSection');
     if (resultsSection) {
-        resultsSection.style.display = 'block';
+        resultsSection.classList.remove('hidden');
         resultsSection.scrollIntoView({ behavior: 'smooth' });
     }
 
-    // Display charts if available
-    if (data.charts) {
-        const pieChart = document.getElementById('pieChart');
-        const barChart = document.getElementById('barChart');
-        if (pieChart) pieChart.src = 'data:image/png;base64,' + data.charts.pie;
-        if (barChart) barChart.src = 'data:image/png;base64,' + data.charts.bar;
+    // Create interactive charts
+    createVulnerabilityCharts(summary, data);
+    
+    // Create ML charts if ML insights are available
+    if (data.ml_insights) {
+        createMLCharts(data.ml_insights);
+    }
+}
+
+// Chart instances storage
+let chartInstances = {
+    pie: null,
+    bar: null,
+    mlRisk: null,
+    mlConfidence: null
+};
+
+function createVulnerabilityCharts(summary, data) {
+    // Destroy existing charts if they exist
+    if (chartInstances.pie) chartInstances.pie.destroy();
+    if (chartInstances.bar) chartInstances.bar.destroy();
+    
+    // Prepare data
+    const riskData = {
+        labels: ['High Risk', 'Medium Risk', 'Low Risk'],
+        values: [
+            summary.high_risk || 0,
+            summary.medium_risk || 0,
+            summary.low_risk || 0
+        ],
+        colors: ['#dc3545', '#ffc107', '#28a745'],
+        bgColors: ['rgba(220, 53, 69, 0.8)', 'rgba(255, 193, 7, 0.8)', 'rgba(40, 167, 69, 0.8)']
+    };
+    
+    // Create Pie Chart
+    const pieCtx = document.getElementById('pieChart');
+    if (pieCtx) {
+        chartInstances.pie = new Chart(pieCtx, {
+            type: 'pie',
+            data: {
+                labels: riskData.labels,
+                datasets: [{
+                    label: 'Vulnerabilities',
+                    data: riskData.values,
+                    backgroundColor: riskData.bgColors,
+                    borderColor: riskData.colors,
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Create Bar Chart
+    const barCtx = document.getElementById('barChart');
+    if (barCtx) {
+        chartInstances.bar = new Chart(barCtx, {
+            type: 'bar',
+            data: {
+                labels: riskData.labels,
+                datasets: [{
+                    label: 'Number of Vulnerabilities',
+                    data: riskData.values,
+                    backgroundColor: riskData.bgColors,
+                    borderColor: riskData.colors,
+                    borderWidth: 2,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.parsed.y}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1,
+                            font: {
+                                size: 12
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Number of Vulnerabilities',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+function createMLCharts(mlInsights) {
+    // Show ML chart containers
+    const mlRiskCard = document.getElementById('mlRiskChartCard');
+    const mlConfidenceCard = document.getElementById('mlConfidenceChartCard');
+    
+    if (mlRiskCard) mlRiskCard.style.display = 'block';
+    if (mlConfidenceCard) mlConfidenceCard.style.display = 'block';
+    
+    // Destroy existing charts if they exist
+    if (chartInstances.mlRisk) chartInstances.mlRisk.destroy();
+    if (chartInstances.mlConfidence) chartInstances.mlConfidence.destroy();
+    
+    // ML Risk Probability Chart (Doughnut)
+    const mlRiskCtx = document.getElementById('mlRiskChart');
+    if (mlRiskCtx && mlInsights.risk_probabilities) {
+        const probs = mlInsights.risk_probabilities;
+        chartInstances.mlRisk = new Chart(mlRiskCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Low Risk', 'Medium Risk', 'High Risk'],
+                datasets: [{
+                    data: [
+                        (probs.low * 100).toFixed(1),
+                        (probs.medium * 100).toFixed(1),
+                        (probs.high * 100).toFixed(1)
+                    ],
+                    backgroundColor: [
+                        'rgba(40, 167, 69, 0.8)',
+                        'rgba(255, 193, 7, 0.8)',
+                        'rgba(220, 53, 69, 0.8)'
+                    ],
+                    borderColor: ['#28a745', '#ffc107', '#dc3545'],
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.label}: ${context.parsed}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // ML Confidence Gauge Chart (Radial/Progress)
+    const mlConfidenceCtx = document.getElementById('mlConfidenceChart');
+    if (mlConfidenceCtx) {
+        const confidence = (mlInsights.confidence * 100).toFixed(1);
+        const confidenceColor = mlInsights.confidence > 0.7 ? '#28a745' : 
+                               mlInsights.confidence > 0.4 ? '#ffc107' : '#dc3545';
+        
+        chartInstances.mlConfidence = new Chart(mlConfidenceCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Confidence', 'Uncertainty'],
+                datasets: [{
+                    data: [confidence, (100 - confidence).toFixed(1)],
+                    backgroundColor: [
+                        confidenceColor,
+                        'rgba(200, 200, 200, 0.3)'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                cutout: '75%',
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: false
+                    }
+                }
+            },
+            plugins: [{
+                id: 'confidenceGauge',
+                afterDraw: (chart) => {
+                    const ctx = chart.ctx;
+                    const centerX = chart.chartArea.left + (chart.chartArea.right - chart.chartArea.left) / 2;
+                    const centerY = chart.chartArea.top + (chart.chartArea.bottom - chart.chartArea.top) / 2;
+                    
+                    ctx.save();
+                    ctx.font = 'bold 24px Arial';
+                    ctx.fillStyle = confidenceColor;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(`${confidence}%`, centerX, centerY - 10);
+                    
+                    ctx.font = '14px Arial';
+                    ctx.fillStyle = '#666';
+                    ctx.fillText('Confidence', centerX, centerY + 15);
+                    ctx.restore();
+                }
+            }]
+        });
     }
 }
 

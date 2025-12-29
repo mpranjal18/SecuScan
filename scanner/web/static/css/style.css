@@ -183,8 +183,15 @@ h1 {
 }
 
 #resultsSection {
-    display: none;
     margin-top: 30px;
+}
+
+#resultsSection.hidden {
+    display: none;
+}
+
+#resultsSection:not(.hidden) {
+    display: block;
 }
 
 .risk-summary {
@@ -218,6 +225,49 @@ h1 {
     margin-bottom: 20px;
     padding: 15px;
     border-radius: 4px;
+}
+
+.charts-container {
+    margin: 40px 0;
+    padding: 20px;
+}
+
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+    margin-top: 20px;
+}
+
+.chart-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.chart-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.chart-card h3 {
+    margin: 0 0 10px 0;
+    color: #333;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.chart-description {
+    color: #666;
+    font-size: 13px;
+    margin: 0 0 15px 0;
+    font-style: italic;
+}
+
+.chart-card canvas {
+    max-height: 300px;
 }
 
 .charts {

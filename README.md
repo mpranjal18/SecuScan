@@ -67,3 +67,81 @@ Create `config.json` in the root directory:
 
 1. Configure email settings in `config.json`:
 ```
+
+## Running the Scanner
+
+### Method 1: Direct Scanning
+
+1. Start the SecuScan service:
+```bash
+python scanner/automation/windows_service.py start
+```
+
+2. Send a scan request via email:
+   - From: Your registered email
+   - To: mpranjal0718@gmail.com
+   - Subject: "Scan Request http://your-target-url"
+   - Body: "Please scan this target"
+
+3. Monitor scan progress:
+   - Check reports folder: `C:\SecuScan\reports`
+   - View service logs: `C:\SecuScan\logs\service.log`
+
+### Method 2: Manual Testing
+
+1. Navigate to the scanner directory:
+```bash
+cd C:\Users\HP\scanner\automation
+```
+
+2. Run the email monitor directly:
+```bash
+python email_monitor.py
+```
+
+3. Send a test scan request and monitor the console output.
+
+### Viewing Scan Results
+
+1. Access reports in the default directory:
+```bash
+dir C:\SecuScan\reports
+```
+
+2. View the latest report:
+```bash
+type C:\SecuScan\reports\scan_report_[timestamp].txt
+```
+
+### Common Scan Commands
+
+```bash
+# Start the scanner service
+python scanner\automation\windows_service.py start
+
+# Stop the scanner service
+python scanner\automation\windows_service.py stop
+
+# Restart the scanner service
+python scanner\automation\windows_service.py restart
+
+# Check service status
+sc query SecuScanService
+```
+
+### Troubleshooting Scans
+
+1. If scan reports are not generating:
+   - Verify the reports directory exists: `C:\SecuScan\reports`
+   - Check directory permissions
+   - Review service logs for errors
+
+2. If email monitoring isn't working:
+   - Verify email credentials in `config.json`
+   - Check IMAP connection
+   - Ensure allowed senders are configured
+
+3. If service won't start:
+   - Run Command Prompt as Administrator
+   - Check for conflicting services
+   - Verify all dependencies are installed

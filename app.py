@@ -1,6 +1,7 @@
 """
 Vercel entrypoint for SecuScan Flask application.
 This file is required by Vercel to locate the Flask app.
+Vercel looks for a variable named 'app' that is a Flask instance.
 """
 import os
 import sys
@@ -13,7 +14,6 @@ if project_root not in sys.path:
 # Import the Flask app from scanner.web.app
 from scanner.web.app import app
 
-# Export the app for Vercel
-# Vercel looks for a variable named 'app' in the entrypoint file
-__all__ = ['app']
+# Vercel requires the app variable to be directly accessible at module level
+# This is the Flask WSGI application that Vercel will use
 
